@@ -75,7 +75,7 @@ namespace MediaPortal.Player
     private bool _lastOverlayVisible = false;
     private bool _isEnabled = true;
     private Geometry.Type _aspectRatioType;
-    private static Rectangle _sourceRect, _destinationRect;
+    private Rectangle _sourceRect, _destinationRect;
     private Geometry _geometry = new Geometry();
     private VMR9Util _vmr9Util = null;
     private VertexBuffer[] _vertexBuffers;
@@ -152,7 +152,7 @@ namespace MediaPortal.Player
     /// Returns a rectangle specifing the part of the video texture which is 
     /// shown
     /// </summary>
-    public static Rectangle SourceRect
+    public Rectangle SourceRect
     {
       get { return _sourceRect; }
     }
@@ -160,7 +160,7 @@ namespace MediaPortal.Player
     /// <summary>
     /// Returns a rectangle specifing the video window onscreen
     /// </summary>
-    public static Rectangle DestRect
+    public Rectangle DestRect
     {
       get { return _destinationRect; }
     }
@@ -453,7 +453,10 @@ namespace MediaPortal.Player
       {
         if (!GUIGraphicsContext.InVmr9Render)
         {
-          InternalPresentImage(_vmr9Util.VideoWidth, _vmr9Util.VideoHeight, _arVideoWidth, _arVideoHeight, true);
+          if (_textureAddress != 0)
+          {
+            InternalPresentImage(_vmr9Util.VideoWidth, _vmr9Util.VideoHeight, _arVideoWidth, _arVideoHeight, true);
+          }
         }
       }
       catch (Exception ex)
@@ -864,10 +867,9 @@ namespace MediaPortal.Player
           RenderBlackImage(timePassed);
         }
 
-        // Render video texture
+        //Render video texture
         if (_shouldRenderTexture == false)
         {
-          BDOSDRenderer.GetInstance().Render();
           return;
         }
 
@@ -884,7 +886,6 @@ namespace MediaPortal.Player
       }
       SubtitleRenderer.GetInstance().Render();
       SubEngine.GetInstance().Render(_subsRect, _destinationRect);
-      BDOSDRenderer.GetInstance().Render();
     }
 
     public bool ShouldRenderLayer()

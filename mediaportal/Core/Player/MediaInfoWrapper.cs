@@ -164,10 +164,25 @@ namespace MediaPortal.Player
           // get all other info from main title's 1st vob
           strFile = mainTitle;
         }
-        else if (strFile.ToLower().EndsWith(".bdmv"))
+
+        if (strFile.ToLower().EndsWith(".bdmv"))
         {
           string path = Path.GetDirectoryName(strFile) + @"\STREAM";
-          strFile = GetLargestFileInDirectory(path, "*.m2ts");
+          string mainTitle = GetLargestFileInDirectory(path, "*.m2ts");
+          string titleSearch = Path.GetFileName(mainTitle);
+          //titleSearch = titleSearch.Substring(0, titleSearch.LastIndexOf('_')) + "*.m2ts";
+          string[] m2tss = Directory.GetFiles(path, titleSearch, SearchOption.TopDirectoryOnly);
+
+          foreach (string m2ts in m2tss)
+          {
+            int vobDuration = 0;
+            _mI.Open(m2ts);
+            int.TryParse(_mI.Get(StreamKind.General, 0, "Duration"), out vobDuration);
+            _mI.Close();
+            _videoDuration += vobDuration;
+          }
+          // get all other info from main title's 1st vob
+          strFile = mainTitle;
         }
 
         _mI.Open(strFile);
