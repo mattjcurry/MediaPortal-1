@@ -2099,13 +2099,19 @@ namespace TvPlugin
       	  string strJumps = string.Empty;
       	  
       	  double duration = g_Player.Duration;
-      	  foreach(double chapter in chapters) {
-      	    double chapterPercent = chapter/duration*100.0d;
-      	  	strChapters += String.Format("{0:0.00}", chapterPercent) + " ";
+      	  if(chapters != null) 
+      	  {
+      	    foreach(double chapter in chapters) {
+      	      double chapterPercent = chapter/duration*100.0d;
+      	  	  strChapters += String.Format("{0:0.00}", chapterPercent) + " ";
+      	    }
       	  }
-      	  foreach(double jump in jumpPoints) {
-      	    double jumpPercent = jump/duration*100.0d;
-      	  	strJumps += String.Format("{0:0.00}", jumpPercent) + " ";
+      	  if (jumpPoints != null)
+      	  {
+      	    foreach(double jump in jumpPoints) {
+      	      double jumpPercent = jump/duration*100.0d;
+      	  	  strJumps += String.Format("{0:0.00}", jumpPercent) + " ";
+      	    }
       	  }
       	  GUIPropertyManager.SetProperty("#TV.Record.chapters", strChapters);
       	  GUIPropertyManager.SetProperty("#TV.Record.jumppoints", strJumps);
