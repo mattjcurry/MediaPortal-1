@@ -43,13 +43,16 @@ namespace MediaPortal.GUI.Library
     private GUIAnimation _imageLeft = null;
     private GUIAnimation _imageMid = null;
     private GUIAnimation _imageRight = null;
-    private List<GUIAnimation> _imageFillMarker = new List<GUIAnimation>();
+    private GUIAnimation _imageFillMarker = null;
     private float _percentage1 = 0;
     private float _percentage2 = 0;
     private float _percentage3 = 0;
-    private List<float> _markerStarts = new List<float>();
-    private List<float> _markerEnds = new List<float>();
-
+    private List<float> _markerStartsPercent = new List<float>();
+    private List<float> _markerEndsPercent = new List<float>();
+    private List<int> _markerXPositions = new List<int>();
+    private List<int> _markerYPositions = new List<int>();
+    private List<int> _markerWidths = new List<int>();
+	private bool _isFirstRender = true;
 
     [XMLSkinElement("label")] private string _propertyLabel = "";
     [XMLSkinElement("textcolor")] protected long _textColor = 0xFFFFFFFF;
@@ -198,19 +201,14 @@ namespace MediaPortal.GUI.Library
       _imageLogo.ParentControl = this;
       FontName = _fontName;
       
-      //for each of the jump points create an image.
+      //Create a single image which we can move and resize accordingly
       string strText = GUIPropertyManager.Parse(LabelMarkerStarts);
       	if (strText.Length > 0)
       	{
-      	  string[] strMarkerStarts = strText.Trim().Split(' ');
-  		  _imageFillMarker.Clear();
-  		  for(int i=0; i<strMarkerStarts.Length; i++) {
-  		  	GUIAnimation anim = LoadAnimationControl(_parentControlId, _controlId, _positionX, _positionY, 0, 0,
+  		  	_imageFillMarker = LoadAnimationControl(_parentControlId, _controlId, _positionX, _positionY, 0, 0,
                                          _markerTextureName);
-  		  	anim.KeepAspectRatio = false;
-  		  	anim.ParentControl = this;
-  		  	_imageFillMarker.Add(anim);	
-  		  }
+  		  	_imageFillMarker.KeepAspectRatio = false;
+  		  	_imageFillMarker.ParentControl = this;	
       	}
     }
 
@@ -260,9 +258,9 @@ namespace MediaPortal.GUI.Library
         {
           _imageFill3.Dimmed = value;
         }
-        foreach (GUIAnimation imageFillMarker in _imageFillMarker)
+        if (_imageFillMarker != null)
         {
-        	imageFillMarker.Dimmed=value;
+        	_imageFillMarker.Dimmed=value;
         }
         if (_imageLeft != null)
         {
@@ -359,48 +357,7 @@ namespace MediaPortal.GUI.Library
           }
         }
       }
-      if (LabelMarkerStarts.Length>0)
-      {
-      	string strText = GUIPropertyManager.Parse(LabelMarkerStarts);
-      	if (strText.Length > 0)
-      	{
-      		
-      	  string[] strMarkerStarts = strText.Trim().Split(' ');
-  		  MarkerStarts.Clear();
-  		  for(int i=0; i< strMarkerStarts.Length; i++) {
-  		    try 
-  			{
-  		      MarkerStarts.Add(float.Parse(strMarkerStarts[i]));
-  			}
-  			catch (Exception) {}
-  			if (MarkerStarts[i] < 0 || MarkerStarts[i] > 100)
-  			{
-  				MarkerStarts[i] = 0;
-  			}
-  		  }	
-      	}
-      }
-      if (LabelMarkerEnds.Length>0)
-      {
-      	string strText = GUIPropertyManager.Parse(LabelMarkerEnds);
-      	if (strText.Length > 0)
-      	{
-      		
-      	  string[] strMarkerEnds = strText.Trim().Split(' ');
-  		  MarkerEnds.Clear();
-  		  for(int i=0; i< strMarkerEnds.Length; i++) {
-  		    try 
-  			{
-  		      MarkerEnds.Add(float.Parse(strMarkerEnds[i]));
-  			}
-  			catch (Exception) {}
-  			if (MarkerEnds[i] < 0 || MarkerEnds[i] > 100)
-  			{
-  				MarkerEnds[i] = 0;
-  			}
-  		  }	
-      	}
-      }
+
       
       int xPos = _positionX;
       _imageLeft.SetPosition(xPos, _positionY);
@@ -441,24 +398,15 @@ namespace MediaPortal.GUI.Library
       }
 	  fWidth = (float)iWidth;
       fWidth /= 100.0f;
-	  float percentIncrement = fWidth;
-	  float fJumpWidth=0;
-	  for(int i=0; i<MarkerStarts.Count || i<MarkerEnds.Count; i++) {
-	  	//set the width of the bar
-	  	fJumpWidth = (float)MarkerEnds[i]-(float)MarkerStarts[i];
-	  	fJumpWidth *= percentIncrement;
-	  	//set the current starting position
-      	fWidth = percentIncrement*(float)MarkerStarts[i];
-      	iWidth1 = (int)Math.Floor(fWidth);
-	  	iCurPos = iWidth1 + xPos;
-	  	//set the rounded width
-	  	iWidth1 = (int)Math.Floor(fJumpWidth);
-	  	if(iWidth1 > 0) {
-	  		_imageFillMarker[i].Height = _fillBackgroundHeight;
-	  		_imageFillMarker[i].Width = iWidth1;
-	  		_imageFillMarker[i].SetPosition(iCurPos, yPos);
-	  		_imageFillMarker[i].Render(timePassed);
-	  	}
+      //calculate size and set markers for comskip
+      if(_isFirstRender) {
+      	calculateMarkerSizeAndPosition(xPos, yPos, fWidth);
+      }
+	  for(int i=0; i<_markerYPositions.Count || i<_markerXPositions.Count || i<_markerWidths.Count; i++) 
+	  {
+      	_imageFillMarker.Width = _markerWidths[i];
+      	_imageFillMarker.SetPosition(_markerXPositions[i], _markerYPositions[i]);
+	  	_imageFillMarker.Render(timePassed);
 	  }
 	  
       // render first color
@@ -625,8 +573,82 @@ namespace MediaPortal.GUI.Library
         }
       }
       base.Render(timePassed);
+      _isFirstRender=false;
     }
 
+    private void calculateMarkerSizeAndPosition(int iXPos, int iYPos, float fTotWidth) {
+    	Log.Debug("Setting Comskip Marker Size and position");
+      //first step is to parse the labels and populate the percentages
+      if (LabelMarkerStarts.Length>0)
+      {
+      	string strText = GUIPropertyManager.Parse(LabelMarkerStarts);
+      	if (strText.Length > 0)
+      	{
+      		
+      	  string[] strMarkerStarts = strText.Trim().Split(' ');
+  		  MarkerStartsPercent.Clear();
+  		  for(int i=0; i< strMarkerStarts.Length; i++) {
+  		    try 
+  			{
+  		      MarkerStartsPercent.Add(float.Parse(strMarkerStarts[i]));
+  			}
+  			catch (Exception) {}
+  			if (MarkerStartsPercent[i] < 0 || MarkerStartsPercent[i] > 100)
+  			{
+  				MarkerStartsPercent[i] = 0;
+  			}
+  		  }	
+      	}
+      }
+      if (LabelMarkerEnds.Length>0)
+      {
+      	string strText = GUIPropertyManager.Parse(LabelMarkerEnds);
+      	if (strText.Length > 0)
+      	{
+      		
+      	  string[] strMarkerEnds = strText.Trim().Split(' ');
+  		  MarkerEndsPercent.Clear();
+  		  for(int i=0; i< strMarkerEnds.Length; i++) {
+  		    try 
+  			{
+  		      MarkerEndsPercent.Add(float.Parse(strMarkerEnds[i]));
+  			}
+  			catch (Exception) {}
+  			if (MarkerEndsPercent[i] < 0 || MarkerEndsPercent[i] > 100)
+  			{
+  				MarkerEndsPercent[i] = 0;
+  			}
+  		  }	
+      	}
+      }
+      Log.Debug("Comskip Markers: found " + MarkerStartsPercent.Count);
+      float fPercentIncrement = fTotWidth;
+	  float fJumpWidth=0;
+	  int iCurrentPosition=0;
+	  int iWidth1 = 0;
+	  _imageFillMarker.Height = _fillBackgroundHeight;
+	  _markerWidths.Clear();
+	  _markerXPositions.Clear();
+	  _markerYPositions.Clear();
+	  for(int i=0; i<MarkerStartsPercent.Count || i<MarkerEndsPercent.Count; i++) {
+	  	//set the width of the bar
+	  	fJumpWidth = (float)MarkerEndsPercent[i]-(float)MarkerStartsPercent[i];
+	  	fJumpWidth *= fPercentIncrement;
+	  	//set the current starting position
+      	fTotWidth = fPercentIncrement*(float)MarkerStartsPercent[i];
+      	iWidth1 = (int)Math.Floor(fTotWidth);
+	  	iCurrentPosition = iWidth1 + iXPos;
+	  	//set the rounded width
+	  	iWidth1 = (int)Math.Floor(fJumpWidth);
+	  	if(iWidth1 > 0) {
+	  		_markerWidths.Add(iWidth1);
+	  		_markerXPositions.Add(iCurrentPosition);
+	  		_markerYPositions.Add(iYPos);
+
+	  	}
+	  }
+    }
+    
     public override bool CanFocus()
     {
       return false;
@@ -682,20 +704,20 @@ namespace MediaPortal.GUI.Library
         }
       }
     }
-    public List<float> MarkerStarts
+    public List<float> MarkerStartsPercent
     {
-      get { return _markerStarts; }
+      get { return _markerStartsPercent; }
       set
       {
-        _markerStarts = value;
+        _markerStartsPercent = value;
       }
     }
-    public List<float> MarkerEnds
+    public List<float> MarkerEndsPercent
     {
-      get { return _markerEnds; }
+      get { return _markerEndsPercent; }
       set
       {
-        _markerEnds = value;
+        _markerEndsPercent = value;
       }
     }
 
@@ -709,10 +731,7 @@ namespace MediaPortal.GUI.Library
       _imageFill1.SafeDispose();
       _imageFill2.SafeDispose();
       _imageFill3.SafeDispose();
-      foreach (GUIAnimation imageFillMarker in _imageFillMarker)
-      {
-        imageFillMarker.SafeDispose();
-      }
+      _imageFillMarker.SafeDispose();
       _imageFillBackground.SafeDispose();
       _imageTick.SafeDispose();
       _imageBottom.SafeDispose();
@@ -731,10 +750,7 @@ namespace MediaPortal.GUI.Library
       _imageFill1.PreAllocResources();
       _imageFill2.PreAllocResources();
       _imageFill3.PreAllocResources();
-      foreach (GUIAnimation imageFillMarker in _imageFillMarker)
-      {
-       imageFillMarker.PreAllocResources();
-      }
+      _imageFillMarker.PreAllocResources();
       _imageTick.PreAllocResources();
       _imageLogo.PreAllocResources();
     }
@@ -752,11 +768,8 @@ namespace MediaPortal.GUI.Library
       _imageFill1.AllocResources();
       _imageFill2.AllocResources();
       _imageFill3.AllocResources();
-      foreach (GUIAnimation imageFillMarker in _imageFillMarker)
-      {
-       imageFillMarker.AllocResources();
-       imageFillMarker.Filtering = false;
-      }
+       _imageFillMarker.AllocResources();
+       _imageFillMarker.Filtering = false;
       _imageTick.AllocResources();
       _imageLogo.AllocResources();
 
@@ -781,10 +794,7 @@ namespace MediaPortal.GUI.Library
       _imageFill2.Height = _height - 6;
       _imageFill3.Height = _height - 6;
       //_imageTick.Height=_height;
-      foreach (GUIAnimation imageFillMarker in _imageFillMarker)
-      {
-      	imageFillMarker.Height=_height - 6;
-      }
+      _imageFillMarker.Height=_height - 6;
     }
 
     public string FillBackGroundName
@@ -1078,9 +1088,9 @@ namespace MediaPortal.GUI.Library
         {
           _imageFill3.DimColor = value;
         }
-        foreach (GUIAnimation imageFillMarker in _imageFillMarker)
+        if (_imageFillMarker != null)
         {
-        	imageFillMarker.DimColor=value;
+        	_imageFillMarker.DimColor=value;
         }
         if (_imageLeft != null)
         {
