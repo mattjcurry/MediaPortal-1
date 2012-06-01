@@ -358,18 +358,34 @@ namespace MediaPortal.GUI.Library
         }
       }
 
-      
+      int iWidthLeft = _imageLeft.TextureWidth;
+      int iHeightLeft = _imageLeft.TextureHeight;
+      int iWidthRight = _imageRight.TextureWidth;
+      int iHeightRight = _imageRight.TextureHeight;
+
+      GUIGraphicsContext.ScaleHorizontal(ref iWidthLeft);
+      GUIGraphicsContext.ScaleHorizontal(ref iWidthRight);
+      GUIGraphicsContext.ScaleVertical(ref iHeightLeft);
+      GUIGraphicsContext.ScaleVertical(ref iHeightRight);
+
       int xPos = _positionX;
       _imageLeft.SetPosition(xPos, _positionY);
 
-      xPos = _positionX + _imageLeft.TextureWidth;
+      _imageLeft.Height = iHeightLeft;
+      _imageLeft.Width = iWidthLeft;
+
+      xPos = _positionX + iWidthLeft;
       _imageMid.SetPosition(xPos, _positionY);
 
-      int iWidth = _width - (_imageLeft.TextureWidth + _imageRight.TextureWidth);
+      //the reson we do not need scale horizonal is that we are just filling the space between left and right.
+      int iWidth = _width - (iWidthLeft + iWidthRight);
       _imageMid.Width = iWidth;
 
-      xPos = iWidth + _positionX + _imageLeft.TextureWidth;
+      xPos = iWidth + _positionX + iWidthLeft;
       _imageRight.SetPosition(xPos, _positionY);
+
+      _imageRight.Height = iHeightRight;
+      _imageRight.Width = iWidthRight;
 
       _imageLeft.Render(timePassed);
       _imageRight.Render(timePassed);
@@ -382,15 +398,15 @@ namespace MediaPortal.GUI.Library
       int iCurPos = 0;
       // render fillbkg
 
-      xPos = _positionX + _imageLeft.TextureWidth + _fillBackgroundOffsetX;
+      xPos = _positionX + iWidthLeft + _fillBackgroundOffsetX;
       _imageFillBackground.Width = iWidth;
       _imageFillBackground.Height = _imageMid.TextureHeight - _fillBackgroundOffsetY * 2;
       _imageFillBackground.SetPosition(xPos, _positionY + _fillBackgroundOffsetY);
       _imageFillBackground.Render(timePassed);
 
       int xoff = GUIGraphicsContext.ScaleHorizontal(3);
-	  //render commercial markers
-	  xPos = _positionX + _imageLeft.TextureWidth + _fillBackgroundOffsetX + xoff;
+      xPos = _positionX + iWidthLeft + _fillBackgroundOffsetX + xoff;
+
       int yPos = _imageFillBackground.YPosition + (_imageFillBackground.Height / 2) - (_fillBackgroundHeight / 2);
 	  if (yPos < _positionY)
       {
@@ -398,10 +414,14 @@ namespace MediaPortal.GUI.Library
       }
 	  fWidth = (float)iWidth;
       fWidth /= 100.0f;
-      //calculate size and set markers for comskip
+      
+      //render commercial markers
+      //calculate size and set markers for comskip on the first call to render
       if(_isFirstRender) {
-      	calculateMarkerSizeAndPosition(xPos, yPos, fWidth);
+      	parseMarkerValues();
       }
+      //right now we are parsing the sizes everytime, but in the future it would be better to call this whenever the scale changes.
+      calculateMarkerSizeAndPosition(xPos, yPos, fWidth);
 	  for(int i=0; i<_markerYPositions.Count || i<_markerXPositions.Count || i<_markerWidths.Count; i++) 
 	  {
       	_imageFillMarker.Width = _markerWidths[i];
@@ -479,7 +499,7 @@ namespace MediaPortal.GUI.Library
       GUIGraphicsContext.ScaleVertical(ref posy1);
       for (int i = 0; i <= 100; i += 10)
       {
-        float fpos = (float)_positionX + _imageLeft.TextureWidth + posx1;
+        float fpos = (float)_positionX + iWidthLeft + posx1;
         fWidth = (float)(iWidth - posx2);
         fWidth /= 100.0f;
         fWidth *= (float)i;
@@ -504,19 +524,24 @@ namespace MediaPortal.GUI.Library
       _imageTick.Render(timePassed);
 
       // render bottom
-      xPos = _imageTop.XPosition + (_imageTop.TextureWidth / 2) - (_imageBottom.TextureWidth / 2);
-      _imageBottom.SetPosition(xPos, _positionY + _imageMid.TextureHeight);
+      _imageBottom.Height = GUIGraphicsContext.ScaleVertical(_imageBottom.TextureHeight);
+      _imageBottom.Width = GUIGraphicsContext.ScaleHorizontal(_imageBottom.TextureWidth);
+
+      xPos = _imageTop.XPosition + (_imageTop.Width / 2) - (_imageBottom.Width / 2);
+      _imageBottom.SetPosition(xPos, _positionY + _imageMid.Height);
       _imageBottom.Render(timePassed);
 
 
       //render logo
+      _imageLogo.Height = GUIGraphicsContext.ScaleVertical(_imageLogo.TextureHeight);
+      _imageLogo.Width = GUIGraphicsContext.ScaleHorizontal(_imageLogo.TextureWidth);
       float fx = (float)_imageBottom.XPosition;
-      fx += (((float)_imageBottom.TextureWidth) / 2f);
+      fx += (((float)_imageBottom.Width) / 2f);
       fx -= (((float)_imageLogo.TextureWidth) / 2f);
 
       float fy = (float)_imageBottom.YPosition;
-      fy += (((float)_imageBottom.TextureHeight) / 2f);
-      fy -= (((float)_imageLogo.TextureHeight) / 2f);
+      fy += (((float)_imageBottom.Height) / 2f);
+      fy -= (((float)_imageLogo.Height) / 2f);
       _imageLogo.SetPosition((int)fx, (int)fy);
       _imageLogo.Render(timePassed);
 
@@ -533,8 +558,8 @@ namespace MediaPortal.GUI.Library
           _font.GetTextExtent(strText, ref fW, ref fH);
           fW /= 2.0f;
           fH /= 2.0f;
-          fWidth = ((float)_imageTop.TextureWidth) / 2.0f;
-          fHeight = ((float)_imageTop.TextureHeight) / 2.0f;
+          fWidth = ((float)_imageTop.Width) / 2.0f;
+          fHeight = ((float)_imageTop.Height) / 2.0f;
           fWidth -= fW;
           fHeight -= fH;
           _font.DrawText((float)_imageTop.XPosition + fWidth, (float)2 + _imageTop.YPosition + fHeight, _textColor,
@@ -549,8 +574,8 @@ namespace MediaPortal.GUI.Library
           _font.GetTextExtent(strText, ref fW, ref fH);
           fW /= 2.0f;
           fH /= 2.0f;
-          fWidth = ((float)_imageLeft.TextureWidth) / 2.0f;
-          fHeight = ((float)_imageLeft.TextureHeight) / 2.0f;
+          fWidth = ((float)iWidthLeft) / 2.0f;
+          fHeight = ((float)iHeightLeft) / 2.0f;
           fWidth -= fW;
           fHeight -= fH;
           _font.DrawText((float)_positionX + fWidth, (float)_positionY + fHeight, _textColor, strText,
@@ -564,8 +589,8 @@ namespace MediaPortal.GUI.Library
           _font.GetTextExtent(strText, ref fW, ref fH);
           fW /= 2.0f;
           fH /= 2.0f;
-          fWidth = ((float)_imageRight.TextureWidth) / 2.0f;
-          fHeight = ((float)_imageRight.TextureHeight) / 2.0f;
+          fWidth = ((float)iWidthRight) / 2.0f;
+          fHeight = ((float)iHeightRight) / 2.0f;
           fWidth -= fW;
           fHeight -= fH;
           _font.DrawText((float)_imageRight.XPosition + fWidth, (float)_imageRight.YPosition + fHeight, _textColor,
@@ -576,8 +601,7 @@ namespace MediaPortal.GUI.Library
       _isFirstRender=false;
     }
 
-    private void calculateMarkerSizeAndPosition(int iXPos, int iYPos, float fTotWidth) {
-    	Log.Debug("Setting Comskip Marker Size and position");
+    private void parseMarkerValues() {
       //first step is to parse the labels and populate the percentages
       if (LabelMarkerStarts.Length>0)
       {
@@ -622,6 +646,10 @@ namespace MediaPortal.GUI.Library
       	}
       }
       Log.Debug("Comskip Markers: found " + MarkerStartsPercent.Count);
+    }
+    
+    private void calculateMarkerSizeAndPosition(int iXPos, int iYPos, float fTotWidth) {
+      Log.Debug("Setting Comskip Marker Size and position");
       float fPercentIncrement = fTotWidth;
 	  float fJumpWidth=0;
 	  int iCurrentPosition=0;
@@ -768,8 +796,7 @@ namespace MediaPortal.GUI.Library
       _imageFill1.AllocResources();
       _imageFill2.AllocResources();
       _imageFill3.AllocResources();
-       _imageFillMarker.AllocResources();
-       _imageFillMarker.Filtering = false;
+      _imageFillMarker.AllocResources();
       _imageTick.AllocResources();
       _imageLogo.AllocResources();
 
@@ -782,6 +809,7 @@ namespace MediaPortal.GUI.Library
       _imageFill2.Filtering = false;
       _imageFill3.Filtering = false;
       _imageTick.Filtering = false;
+      _imageFillMarker.Filtering = false;
       if (_height == 0)
       {
         _height = _imageRight.TextureHeight;
