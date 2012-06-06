@@ -654,15 +654,13 @@ namespace MediaPortal.GUI.Library
     }
     
     private void calculateMarkerSizeAndPosition(int iXPos, int iYPos, float fTotWidth) {
-      Log.Debug("Setting Comskip Marker Size and position");
-      Log.Debug("step1");
-      if (LabelMarkerStarts==null || LabelMarkerEnds == null 
+      //Log.Debug("Setting Comskip Marker Size and position");
+      if (LabelMarkerStarts==null || LabelMarkerEnds == null || _imageFillMarker == null 
           || LabelMarkerStarts.Length==0 || LabelMarkerEnds.Length==0)
       {
-      	Log.Debug("returning");
+      	//Log.Debug("returning");
       	return;
       }
-      Log.Debug("step2");
       float fPercentIncrement = fTotWidth;
 	  float fJumpWidth=0;
 	  int iCurrentPosition=0;
