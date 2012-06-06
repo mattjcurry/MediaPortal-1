@@ -47,12 +47,14 @@ namespace MediaPortal.GUI.Library
     private float _percentage1 = 0;
     private float _percentage2 = 0;
     private float _percentage3 = 0;
+    private string _markerStarts = string.Empty;
+    private string _markerEnds= string.Empty;
     private List<float> _markerStartsPercent = new List<float>();
     private List<float> _markerEndsPercent = new List<float>();
     private List<int> _markerXPositions = new List<int>();
     private List<int> _markerYPositions = new List<int>();
     private List<int> _markerWidths = new List<int>();
-	private bool _isFirstRender = true;
+
 
     [XMLSkinElement("label")] private string _propertyLabel = "";
     [XMLSkinElement("textcolor")] protected long _textColor = 0xFFFFFFFF;
@@ -416,9 +418,13 @@ namespace MediaPortal.GUI.Library
       fWidth /= 100.0f;
       
       //render commercial markers
-      //calculate size and set markers for comskip on the first call to render
-      if(_isFirstRender) {
-      	parseMarkerValues();
+      //calculate size and set markers for comskip anytime the parsed value is different than the current value
+      string tempStarts = GUIPropertyManager.Parse(LabelMarkerStarts);
+      string tempEnds = GUIPropertyManager.Parse(LabelMarkerEnds);
+      if(_markerStarts != tempStarts || _markerEnds != tempEnds) {
+      	parseMarkerValues(tempStarts, tempEnds);
+      	_markerStarts = tempStarts;
+      	_markerEnds = tempEnds;
       }
       //right now we are parsing the sizes everytime, but in the future it would be better to call this whenever the scale changes.
       calculateMarkerSizeAndPosition(xPos, yPos, fWidth);
@@ -598,18 +604,18 @@ namespace MediaPortal.GUI.Library
         }
       }
       base.Render(timePassed);
-      _isFirstRender=false;
     }
 
-    private void parseMarkerValues() {
+    private void parseMarkerValues(string strStarts, string strEnds) {
       //first step is to parse the labels and populate the percentages
+      Log.Debug("parsing for comskip values");
       if (LabelMarkerStarts.Length>0)
       {
-      	string strText = GUIPropertyManager.Parse(LabelMarkerStarts);
-      	if (strText.Length > 0)
+      	
+      	if (strStarts.Length > 0)
       	{
       		
-      	  string[] strMarkerStarts = strText.Trim().Split(' ');
+      	  string[] strMarkerStarts = strStarts.Trim().Split(' ');
   		  MarkerStartsPercent.Clear();
   		  for(int i=0; i< strMarkerStarts.Length; i++) {
   		    try 
@@ -626,11 +632,10 @@ namespace MediaPortal.GUI.Library
       }
       if (LabelMarkerEnds.Length>0)
       {
-      	string strText = GUIPropertyManager.Parse(LabelMarkerEnds);
-      	if (strText.Length > 0)
+      	if (strEnds.Length > 0)
       	{
       		
-      	  string[] strMarkerEnds = strText.Trim().Split(' ');
+      	  string[] strMarkerEnds = strEnds.Trim().Split(' ');
   		  MarkerEndsPercent.Clear();
   		  for(int i=0; i< strMarkerEnds.Length; i++) {
   		    try 
@@ -650,6 +655,14 @@ namespace MediaPortal.GUI.Library
     
     private void calculateMarkerSizeAndPosition(int iXPos, int iYPos, float fTotWidth) {
       Log.Debug("Setting Comskip Marker Size and position");
+      Log.Debug("step1");
+      if (LabelMarkerStarts==null || LabelMarkerEnds == null 
+          || LabelMarkerStarts.Length==0 || LabelMarkerEnds.Length==0)
+      {
+      	Log.Debug("returning");
+      	return;
+      }
+      Log.Debug("step2");
       float fPercentIncrement = fTotWidth;
 	  float fJumpWidth=0;
 	  int iCurrentPosition=0;
@@ -778,7 +791,10 @@ namespace MediaPortal.GUI.Library
       _imageFill1.PreAllocResources();
       _imageFill2.PreAllocResources();
       _imageFill3.PreAllocResources();
-      _imageFillMarker.PreAllocResources();
+      if(_imageFillMarker != null) 
+      {
+      	_imageFillMarker.PreAllocResources();
+      }
       _imageTick.PreAllocResources();
       _imageLogo.PreAllocResources();
     }
@@ -796,7 +812,12 @@ namespace MediaPortal.GUI.Library
       _imageFill1.AllocResources();
       _imageFill2.AllocResources();
       _imageFill3.AllocResources();
-      _imageFillMarker.AllocResources();
+      if (_imageFillMarker != null)
+      {
+        _imageFillMarker.AllocResources();
+        _imageFillMarker.Height=_height - 6;
+        _imageFillMarker.Filtering = false;
+      }
       _imageTick.AllocResources();
       _imageLogo.AllocResources();
 
@@ -809,7 +830,7 @@ namespace MediaPortal.GUI.Library
       _imageFill2.Filtering = false;
       _imageFill3.Filtering = false;
       _imageTick.Filtering = false;
-      _imageFillMarker.Filtering = false;
+      
       if (_height == 0)
       {
         _height = _imageRight.TextureHeight;
@@ -822,7 +843,7 @@ namespace MediaPortal.GUI.Library
       _imageFill2.Height = _height - 6;
       _imageFill3.Height = _height - 6;
       //_imageTick.Height=_height;
-      _imageFillMarker.Height=_height - 6;
+     
     }
 
     public string FillBackGroundName
